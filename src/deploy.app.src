@@ -1,0 +1,20 @@
+%%%-------------------------------------------------------------------
+%%% @author zhaoxu-b
+%%% @copyright (C) 2013, <COMPANY>
+%%% @doc
+%%%
+%%% @end
+%%% Created : 31. 十月 2013 上午10:31
+%%%-------------------------------------------------------------------
+{application, deploy, [
+    {description, ""},
+    {vsn, "1.0.0"},
+    {registered, []},
+    {applications, [
+        kernel,
+        stdlib
+    ]},
+    {mod, {deploy, []}},
+    {env, [
+    ]}
+]}.
