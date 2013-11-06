@@ -34,7 +34,7 @@ INSTALL
 Example
 =======
 
-1. compile the code, mkdir three deploy node.
+compile the code, mkdir three deploy node.
 
 	cd deploy
 	sh rebuild
@@ -43,7 +43,7 @@ Example
 	cp -r deply deploy2
 	cp -r deply deploy3
 	
-2. configure app.config of deploy1
+configure app.config of deploy1
 
     [
         {kernel, [{start_pg2, true}]},
