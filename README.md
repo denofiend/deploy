@@ -1,4 +1,3 @@
-
 Name
 ====
 
@@ -19,13 +18,13 @@ you can do these steps:
 REQUIRED
 ========
 
-1. erlang
+	1. erlang
 
 
 INSTALL
 =======
 
-  cd deploy
-  sh rebuild
-  cd rel/deploy
+	cd deploy
+	sh rebuild
+	cd rel/deploy
   
