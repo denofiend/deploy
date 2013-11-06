@@ -92,25 +92,56 @@ get_config(App) ->
             {error, "apps is undfined"}
     end.
 
+
+
+mkdir_basename(AppDir, CH, Dir) ->
+    NewAppDir = filename:join([AppDir, filename:basename(Dir)]),
+
+    case ct_ssh:read_file_info(CH, NewAppDir) of
+        {error, no_such_file} ->
+            ct_ssh:make_dir(CH, NewAppDir);
+        _ ->
+            ok
+    end.
+
 %% --------------------------------------------------------------------
 %% Function: send_dir/4
 %% Description: scp directory.
 %% Returns: ok
 %% --------------------------------------------------------------------
-send_dir(_AppDir, _CH, _Dir, []) ->
+send_dir(_Name, AppDir, CH, Dir, []) ->
+    mkdir_basename(AppDir, CH, Dir),
     ok;
 
-send_dir(AppDir, CH, Dir, [File | T]) ->
+send_dir(Name, AppDir, CH, Dir, [File | T]) ->
+    %%io:format("send dir: AppDir:~p, CH:~p, Dir:~p, File:~p, T:~p~n", [AppDir, CH, Dir, File, T]),
     FullName = filename:join([Dir, File]),
-    case filelib:is_file(FullName) of
-        true ->
+    NewAppDir = filename:join([AppDir, filename:basename(Dir)]),
+    mkdir_basename(AppDir, CH, Dir),
+
+    case filelib:is_dir(FullName) of
+        false ->
             %% sync file to server
             {ok, FileData} = file:read_file(FullName),
-            ct_ssh:write_file(CH, lists:concat([AppDir, filename:basename(FullName)]), FileData);
-        false ->
-            send_dir(AppDir, CH, FullName, file:list_dir(FullName))
+            RemoteFile = filename:join([NewAppDir, filename:basename(FullName)]),
+            case ct_ssh:write_file(CH, RemoteFile, FileData) of
+                {error, Reason} ->
+                    throw({error, Reason}),
+                    io:format("scp local file(~p) to remote(~p) file(~p) return: ~p~n", [FullName, Name, RemoteFile, {error, Reason}]);
+                Any ->
+                    io:format("scp local file(~p) to remote(~p) file(~p) return: ~p~n", [FullName, Name, RemoteFile, Any]),
+                    ok
+            end;
+
+        true ->
+            io:format("~p is directory~n", [FullName]),
+
+            {ok, SubFiles} = file:list_dir(FullName),
+            %%io:format("SubFiles:~p ~n", [SubFiles]),
+
+            send_dir(Name, NewAppDir, CH, FullName, SubFiles)
     end,
-    send_dir(AppDir, CH, Dir, T).
+    send_dir(Name, AppDir, CH, Dir, T).
 
 %% --------------------------------------------------------------------
 %% Function:deploy_dir/2
@@ -130,9 +161,9 @@ deploy_dir(App, Dir) ->
                     fun(ServerConfig) ->
                         case ServerConfig of
                             {Name, _} ->
-                                {ok, CH} = ct_ssh:connect(Name, ssh),
+                                {ok, CH} = ct_ssh:connect(Name, sftp),
 
-                                send_dir(AppDir, CH, Dir, FileNames),
+                                send_dir(Name, AppDir, CH, Dir, FileNames),
 
                                 ct_ssh:disconnect(CH);
                             _ ->
@@ -252,4 +283,3 @@ hot_upgrade(App, Module) ->
         Any ->
             Any
     end.
-

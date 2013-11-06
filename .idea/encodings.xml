@@ -4,15 +4,10 @@
     <file url="file://$PROJECT_DIR$/rebar" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/rebar.cmd" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/rel/files/app.config" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/rel/files/app.config.alpha" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/rel/files/app.config.online.bjcc" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/rel/files/app.config.online.vnet" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/rel/files/deploy" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/rel/files/env.sh" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/rel/files/erl" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/rel/files/nodetool" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/rel/files/qlog.conf.file" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/rel/files/qlog.conf.sock" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/rel/files/vm.args" charset="UTF-8" />
     <file url="PROJECT" charset="UTF-8" />
   </component>
