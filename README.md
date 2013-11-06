@@ -43,7 +43,7 @@ compile the code, mkdir three deploy node.
 	cp -r deply deploy2
 	cp -r deply deploy3
 	
-configure app.config of deploy1
+configure app.config of deploy1, deploy2, deploy3(etc/app.config)
 
     [
         {kernel, [{start_pg2, true}]},
@@ -74,6 +74,96 @@ configure app.config of deploy1
         ]
         }
     ].
-	
 
+configure vm.args of deploy1(deploy01/etc/vm.args)
+
+	## Name of the node
+	-name deploy01@127.0.0.1
 	
+	## Cookie for distributed erlang
+	-setcookie test_deploy
+	
+	## Heartbeat management; auto-restarts VM if it dies or becomes unresponsive
+	## (Disabled by default..use with caution!)
+	##-heart
+	
+	## Enable kernel poll and a few async threads
+	+K true
+	
+	+A 64
+	
+	+P 250000
+	
+	+zdbbl 32768
+	
+	+S 12:12
+	## Increase number of concurrent ports/sockets
+	-env ERL_MAX_PORTS 64000
+	-env ERL_MAX_ETS_TABLES 256000
+	
+	## Tweak GC to run more often
+	-env ERL_FULLSWEEP_AFTER 0
+	
+	-env ERL_CRASH_DUMP_SECONDS 15
+
+configure vm.args of deploy2(deploy02/etc/vm.args)
+
+	## Name of the node
+	-name deploy02@127.0.0.1
+	
+	## Cookie for distributed erlang
+	-setcookie test_deploy
+	
+	## Heartbeat management; auto-restarts VM if it dies or becomes unresponsive
+	## (Disabled by default..use with caution!)
+	##-heart
+	
+	## Enable kernel poll and a few async threads
+	+K true
+	
+	+A 64
+	
+	+P 250000
+	
+	+zdbbl 32768
+	
+	+S 12:12
+	## Increase number of concurrent ports/sockets
+	-env ERL_MAX_PORTS 64000
+	-env ERL_MAX_ETS_TABLES 256000
+	
+	## Tweak GC to run more often
+	-env ERL_FULLSWEEP_AFTER 0
+	
+	-env ERL_CRASH_DUMP_SECONDS 15
+	
+configure vm.args of deploy3(deploy03/etc/vm.args)
+
+	## Name of the node
+	-name deploy03@127.0.0.1
+	
+	## Cookie for distributed erlang
+	-setcookie test_deploy
+	
+	## Heartbeat management; auto-restarts VM if it dies or becomes unresponsive
+	## (Disabled by default..use with caution!)
+	##-heart
+	
+	## Enable kernel poll and a few async threads
+	+K true
+	
+	+A 64
+	
+	+P 250000
+	
+	+zdbbl 32768
+	
+	+S 12:12
+	## Increase number of concurrent ports/sockets
+	-env ERL_MAX_PORTS 64000
+	-env ERL_MAX_ETS_TABLES 256000
+	
+	## Tweak GC to run more often
+	-env ERL_FULLSWEEP_AFTER 0
+	
+	-env ERL_CRASH_DUMP_SECONDS 15
