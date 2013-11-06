@@ -14,6 +14,9 @@ you can do these steps:
 	1. scp file yourname@serverip:/your/app/dir
 	2. ssh -l yourname server_ip
 	3. restart your app server.
+	
+but now, you can use deploy tools to hot upgrade your Erlang Clusters, scp beam file, deploy new directory to new server.
+enjoy it, and you can contribute code to Improve the project.
 
 
 REQUIRED
@@ -167,3 +170,35 @@ configure vm.args of deploy3(deploy03/etc/vm.args)
 	-env ERL_FULLSWEEP_AFTER 0
 	
 	-env ERL_CRASH_DUMP_SECONDS 15
+
+now, you can start three apps:
+
+	cd deploy1
+	bin/deploy console
+	cd deploy2
+	bin/deploy console
+	cd deploy3
+	bin/deploy console
+	
+new a function in deploy.erl:
+
+	mmgg() ->
+		io:format("this mmgg function", []).
+		
+then make, cp deploy.beam to lib directory of deploy1
+
+	cd deploy
+	make
+	cp ebin/deploy.beam rel/deploy01/lib/deploy-1/ebin/deploy.beam
+	
+hot upgrade deploy module in deploy1 erlang node:
+
+	cd deploy1
+	bin/deploy console
+	deploy:hot_upgrade(deploy, deploy).
+	
+go to deploy2, check
+
+	cd deploy2
+	bin/deploy console
+	deploy:mmgg().
