@@ -12,14 +12,13 @@
 -behaviour(application).
 
 -export([
-    start/2,
-    stop/1, deploy_file/2, restart_server/1, deploy_dir/2, hot_upgrade/2
+    start/2, help/0,
+    stop/1, scp_file/3, restart_server/1, scp_dir/3, hot_upgrade_file/2, hot_upgrade_dir/2
 ]).
 
 
 -record(app_config, {
     server_list,
-    app_dir,
     restart_command,
     cookie,
     nodes
@@ -84,7 +83,7 @@ get_config(App) ->
         {ok, Configs} ->
             case lists:keyfind(App, 1, Configs) of
                 false ->
-                    {error, lists:connect([App, " is undefined"])};
+                    {error, lists:concat([App, " is undefined"])};
                 Config ->
                     {ok, Config}
             end;
@@ -113,49 +112,57 @@ send_dir(_Name, AppDir, CH, Dir, []) ->
     mkdir_basename(AppDir, CH, Dir),
     ok;
 
-send_dir(Name, AppDir, CH, Dir, [File | T]) ->
+send_dir(Name, RemoteDir, CH, LocalDir, [File | T]) ->
     %%io:format("send dir: AppDir:~p, CH:~p, Dir:~p, File:~p, T:~p~n", [AppDir, CH, Dir, File, T]),
-    FullName = filename:join([Dir, File]),
-    NewAppDir = filename:join([AppDir, filename:basename(Dir)]),
-    mkdir_basename(AppDir, CH, Dir),
+    FullName = filename:join([LocalDir, File]),
+    NewAppDir = filename:join([RemoteDir, filename:basename(LocalDir)]),
+
+    %% mkdir in Remote server
+    mkdir_basename(RemoteDir, CH, LocalDir),
 
     case filelib:is_dir(FullName) of
         false ->
-            %% sync file to server
-            {ok, FileData} = file:read_file(FullName),
-            RemoteFile = filename:join([NewAppDir, filename:basename(FullName)]),
-            case ct_ssh:write_file(CH, RemoteFile, FileData) of
-                {error, Reason} ->
-                    throw({error, Reason}),
-                    io:format("scp local file(~p) to remote(~p) file(~p) return: ~p~n", [FullName, Name, RemoteFile, {error, Reason}]);
-                Any ->
-                    io:format("scp local file(~p) to remote(~p) file(~p) return: ~p~n", [FullName, Name, RemoteFile, Any]),
-                    ok
+            %% read file data
+            case file:read_file(FullName) of
+                {ok, FileData} ->
+                    RemoteFile = filename:join([NewAppDir, filename:basename(FullName)]),
+                    case ct_ssh:write_file(CH, RemoteFile, FileData) of
+                        {error, Reason} ->
+                            throw({error, Reason}),
+                            io:format("scp local file(~p) to remote(~p) file(~p) return: ~p~n", [FullName, Name, RemoteFile, {error, Reason}]);
+                        Any ->
+                            io:format("scp local file(~p) to remote(~p) file(~p) return: ~p~n", [FullName, Name, RemoteFile, Any]),
+                            ok
+                    end;
+                _ ->
+                    throw({eroor, lists:concat([FullName, "is not exists."])})
             end;
 
         true ->
             io:format("~p is directory~n", [FullName]),
 
-            {ok, SubFiles} = file:list_dir(FullName),
-            %%io:format("SubFiles:~p ~n", [SubFiles]),
-
-            send_dir(Name, NewAppDir, CH, FullName, SubFiles)
+            case file:list_dir(FullName) of
+                {ok, SubFiles} ->
+                    send_dir(Name, NewAppDir, CH, FullName, SubFiles);
+                Any ->
+                    throw(Any)
+            end
     end,
-    send_dir(Name, AppDir, CH, Dir, T).
+    send_dir(Name, RemoteDir, CH, LocalDir, T).
 
 %% --------------------------------------------------------------------
-%% Function:deploy_dir/2
+%% Function:scp_dir/3
 %% Description: deploy directory to remote servers for app.
 %% Returns: ok
 %% --------------------------------------------------------------------
-deploy_dir(App, Dir) ->
-    io:format("deploy dir ~p servers, Directory:~p~n", [App, Dir]),
+scp_dir(App, LocalDir, RemoteDir) ->
+    io:format("deploy dir ~p servers, LocalDir:~p, RemoteDir:~p~n", [App, LocalDir, RemoteDir]),
 
     try
         case get_config(App) of
             {ok, {App, Config}} ->
-                #app_config{server_list = ServerList, app_dir = AppDir} = Config,
-                {ok, FileNames} = file:list_dir(Dir),
+                #app_config{server_list = ServerList} = Config,
+                {ok, FileNames} = file:list_dir(LocalDir),
 
                 lists:foreach(
                     fun(ServerConfig) ->
@@ -163,7 +170,7 @@ deploy_dir(App, Dir) ->
                             {Name, _} ->
                                 {ok, CH} = ct_ssh:connect(Name, sftp),
 
-                                send_dir(Name, AppDir, CH, Dir, FileNames),
+                                send_dir(Name, RemoteDir, CH, LocalDir, FileNames),
 
                                 ct_ssh:disconnect(CH);
                             _ ->
@@ -181,26 +188,33 @@ deploy_dir(App, Dir) ->
     end.
 
 %% --------------------------------------------------------------------
-%% Function:deploy_file/2
+%% Function:scp_file/3
 %% Description: deploy file to remote servers for app.
 %% Returns: ok
 %% --------------------------------------------------------------------
-deploy_file(App, File) ->
-    io:format("deploy file ~p servers, file:~p~n", [App, File]),
+scp_file(App, LocalFile, RemotePath) ->
+    io:format("deploy file ~p servers, LocalFile:~p, RremoatePaht:~p~n", [App, LocalFile, RemotePath]),
     try
         case get_config(App) of
             {ok, {App, Config}} ->
-                #app_config{server_list = ServerConfigList, app_dir = AppDir} = Config,
+                #app_config{server_list = ServerConfigList} = Config,
                 %% sync file to server
-                case file:read_file(File) of
+                case file:read_file(LocalFile) of
                     {ok, FileData} ->
                         lists:foreach(
                             fun(ServerConfig) ->
                                 case ServerConfig of
                                     {Name, _} ->
-                                        %%io:format("Name:~p, AppDir:~p, RemoteRelPath:~p~n", [Name, AppDir, lists:concat([AppDir, filename:basename(File)])]),
                                         {ok, CH} = ct_ssh:connect(Name, sftp),
-                                        ct_ssh:write_file(CH, lists:concat([AppDir, filename:basename(File)]), FileData),
+                                        RemoteFile = filename:join([RemotePath, filename:basename(LocalFile)]),
+                                        case ct_ssh:write_file(CH, RemoteFile, FileData) of
+                                            {error, Reason} ->
+                                                throw({error, Reason}),
+                                                io:format("scp local file(~p) to remote(~p) file(~p) return: ~p~n", [LocalFile, Name, RemoteFile, {error, Reason}]);
+                                            Any ->
+                                                io:format("scp local file(~p) to remote(~p) file(~p) return: ~p~n", [LocalFile, Name, RemoteFile, Any]),
+                                                ok
+                                        end,
                                         ct_ssh:disconnect(CH);
                                     _ ->
                                         throw({error, "ssh config error"})
@@ -252,12 +266,51 @@ restart_server(App) ->
     end.
 
 %% --------------------------------------------------------------------
-%% Function:hot_upgrade/2
+%% Function:reload_file/1
+%% Description: reload module from file.
+%% Returns: ok
+%% --------------------------------------------------------------------
+reload_file(ModuleFile) ->
+    io:format("reload file: ModuleFile:~p~n", [ModuleFile]),
+    case is_beam_file(ModuleFile) of
+        true ->
+            case code:soft_purge(erlang:list_to_atom(filename:rootname(filename:basename(ModuleFile)))) of
+                true ->
+                    case code:load_abs(filename:rootname(ModuleFile)) of
+                        {module, Module} ->
+                            case code:add_path(filename:dirname(ModuleFile)) of
+                                true ->
+                                    {Mod, Bin, File} = code:get_object_code(Module),
+                                    {ResL, BadNodes} = rpc:multicall(code, load_binary, [Mod, File, Bin]),
+                                    io:format("Res:~p, BadNodes:~p~n", [ResL, BadNodes]);
+                                AddPathError ->
+                                    throw(AddPathError)
+                            end;
+                        Any ->
+                            throw(Any)
+                    end;
+                false ->
+                    throw({error, 'code_purge_err'})
+            end;
+        false ->
+            io:format("~p is not beam file~n", [ModuleFile])
+    end.
+
+%% --------------------------------------------------------------------
+%% Function:is_beam_file/1
+%% Description: is_beam_file
+%% Returns: ok
+%% --------------------------------------------------------------------
+is_beam_file(File) ->
+    ".beam" =:= filename:extension(File).
+
+%% --------------------------------------------------------------------
+%% Function:hot_upgrade_file/2
 %% Description: hot upgrade one Module in all servers of App.
 %% Returns: ok
 %% --------------------------------------------------------------------
-hot_upgrade(App, Module) ->
-    io:format("hot upgrade ~p servers, Module:~p~n", [App, Module]),
+hot_upgrade_file(App, ModuleFile) ->
+    io:format("hot upgrade ~p servers, ModuleFile:~p~n", [App, ModuleFile]),
     try
         case get_config(App) of
             {ok, {App, Config}} ->
@@ -271,9 +324,7 @@ hot_upgrade(App, Module) ->
                 io:format("server nodes:~p~n", [nodes()]),
 
                 %% hot upgrade the Module
-                {Mod, Bin, File} = code:get_object_code(Module),
-                {ResL, BadNodes} = rpc:multicall(code, load_binary, [Mod, File, Bin]),
-                io:format("Res:~p, BadNodes:~p~n", [ResL, BadNodes]),
+                reload_file(ModuleFile),
                 ok;
             Error ->
                 io:format("err:~p.~n", [Error]),
@@ -283,3 +334,60 @@ hot_upgrade(App, Module) ->
         Any ->
             Any
     end.
+%% --------------------------------------------------------------------
+%% Function:hot_upgrade_dir/2
+%% Description: hot upgrade Module directory in all servers of App. not support -R
+%% Returns: ok
+%% --------------------------------------------------------------------
+hot_upgrade_dir(App, ModuleDir) ->
+    io:format("hot upgrade ~p servers, ModuleDir:~p~n", [App, ModuleDir]),
+    try
+        case get_config(App) of
+            {ok, {App, Config}} ->
+                #app_config{cookie = Cookie, nodes = Nodes} = Config,
+
+                %% set cookie
+                erlang:set_cookie(node(), Cookie),
+                %% ping other nodes.
+                lists:foreach(fun(ServerNode) -> net_adm:ping(ServerNode) end, Nodes),
+
+                io:format("server nodes:~p~n", [nodes()]),
+
+                case file:list_dir(ModuleDir) of
+                    {ok, FileNames} ->
+                        lists:foreach(
+                            fun(ModuleFile) ->
+                                %% hot upgrade the Module
+                                reload_file(filename:join([ModuleDir, ModuleFile]))
+                            end, FileNames);
+                    _ ->
+                        throw({error, lists:concat([ModuleDir, " is not a directory"])})
+                end,
+                ok;
+            Error ->
+                io:format("err:~p.~n", [Error]),
+                Error
+        end
+    catch
+        Any ->
+            Any
+    end.
+%% --------------------------------------------------------------------
+%% Function:help/0
+%% Description: how to use deploy tools.
+%% Returns: ok
+%% --------------------------------------------------------------------
+help() ->
+    io:format("scp_file(App, LocalFile, RemotePath):    -- scp LocalFile to RemotePath of all servers for App.~n~n", []),
+    io:format("scp_dir(App, LocalDir, RemoteDir):       -- scp LocalDir to RemoteDir of all servers for App.~n~n", []),
+    io:format("hot_upgrade_file(App, ModuleFile):       -- hot upgrade ModuleFile for App.~n~n", []),
+    io:format("hot_upgrade_dir(App, ModuleDir):         -- hot upgrade all ModuleFile of ModuleDir for App.~n~n", []),
+    io:format("restart_server(App, ModuleDir):          -- restart all servers for App.~n~n", []),
+
+    io:format("------example-------~n~n", []),
+
+    io:format("scp_file(App, LocalFile, RemotePath):    -- deploy:scp_file(deploy, \"/home/zhaoxu/file\", \"/data\").~n~n", []),
+    io:format("scp_dir(App, LocalDir, RemoteDir):       -- deploy:scp_dir(deploy, \"/home/zhaoxu/dir\", \"/data\").~n~n", []),
+    io:format("hot_upgrade_file(App, ModuleFile):       -- deploy:hot_upgrade_file(deploy, \"/home/zhaoxu/example.beam\").~n~n", []),
+    io:format("hot_upgrade_dir(App, ModuleDir):         -- deploy:hot_upgrade_dir(deploy, \"/home/zhaoxu/dir\").~n~n", []),
+    io:format("restart_server(App, ModuleDir):          -- deploy:restart_server(deploy).~n~n", []).
