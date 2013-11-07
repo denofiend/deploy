@@ -3,7 +3,6 @@ Name
 
 Hot Upgrade Erlang Clusters, scp directory, file to clusters.( all in config file)
 
-
 Description
 ===========
 
@@ -18,12 +17,10 @@ you can do these steps:
 but now, you can use deploy tools to hot upgrade your Erlang Clusters, scp beam file, deploy new directory to new server.
 enjoy it, and you can contribute code to Improve the project.
 
-
 REQUIRED
 ========
 
 	1. erlang
-
 
 INSTALL
 =======
@@ -33,7 +30,6 @@ INSTALL
 	cd rel/deploy
 	bin/deploy console
 	deploy:deploy_file(app, "file“).
-	
 Example
 =======
 
