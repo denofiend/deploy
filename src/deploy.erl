@@ -95,13 +95,7 @@ get_config(App) ->
 
 mkdir_basename(AppDir, CH, Dir) ->
     NewAppDir = filename:join([AppDir, filename:basename(Dir)]),
-
-    case ct_ssh:read_file_info(CH, NewAppDir) of
-        {error, no_such_file} ->
-            ct_ssh:make_dir(CH, NewAppDir);
-        _ ->
-            ok
-    end.
+    ct_ssh:make_dir(CH, NewAppDir).
 
 %% --------------------------------------------------------------------
 %% Function: send_dir/4
@@ -249,7 +243,12 @@ restart_server(App) ->
                         case ServerConfig of
                             {Name, _} ->
                                 {ok, CH1} = ct_ssh:connect(Name, ssh),
-                                ct_ssh:exec(CH1, RestartCommand),
+                                case ct_ssh:exec(CH1, RestartCommand) of
+                                    {ok,_Data} ->
+                                        io:format("restart server [~p]ok~n", [ServerConfig]);
+                                    ErrorAny ->
+                                        throw(ErrorAny)
+                                end,
                                 ct_ssh:disconnect(CH1);
                             _ ->
                                 throw({error, "ssh config error"})
@@ -266,11 +265,11 @@ restart_server(App) ->
     end.
 
 %% --------------------------------------------------------------------
-%% Function:reload_file/1
+%% Function:reload_file/2
 %% Description: reload module from file.
 %% Returns: ok
 %% --------------------------------------------------------------------
-reload_file(ModuleFile) ->
+reload_file(Nodes, ModuleFile) ->
     io:format("reload file: ModuleFile:~p~n", [ModuleFile]),
     case is_beam_file(ModuleFile) of
         true ->
@@ -281,7 +280,7 @@ reload_file(ModuleFile) ->
                             case code:add_path(filename:dirname(ModuleFile)) of
                                 true ->
                                     {Mod, Bin, File} = code:get_object_code(Module),
-                                    {ResL, BadNodes} = rpc:multicall(code, load_binary, [Mod, File, Bin]),
+                                    {ResL, BadNodes} = rpc:multicall(Nodes, code, load_binary, [Mod, File, Bin]),
                                     io:format("Res:~p, BadNodes:~p~n", [ResL, BadNodes]);
                                 AddPathError ->
                                     throw(AddPathError)
@@ -318,13 +317,9 @@ hot_upgrade_file(App, ModuleFile) ->
 
                 %% set cookie
                 erlang:set_cookie(node(), Cookie),
-                %% ping other nodes.
-                lists:foreach(fun(ServerNode) -> net_adm:ping(ServerNode) end, Nodes),
-
-                io:format("server nodes:~p~n", [nodes()]),
 
                 %% hot upgrade the Module
-                reload_file(ModuleFile),
+                reload_file(Nodes, ModuleFile),
                 ok;
             Error ->
                 io:format("err:~p.~n", [Error]),
@@ -348,17 +343,13 @@ hot_upgrade_dir(App, ModuleDir) ->
 
                 %% set cookie
                 erlang:set_cookie(node(), Cookie),
-                %% ping other nodes.
-                lists:foreach(fun(ServerNode) -> net_adm:ping(ServerNode) end, Nodes),
-
-                io:format("server nodes:~p~n", [nodes()]),
 
                 case file:list_dir(ModuleDir) of
                     {ok, FileNames} ->
                         lists:foreach(
                             fun(ModuleFile) ->
                                 %% hot upgrade the Module
-                                reload_file(filename:join([ModuleDir, ModuleFile]))
+                                reload_file(Nodes, filename:join([ModuleDir, ModuleFile]))
                             end, FileNames);
                     _ ->
                         throw({error, lists:concat([ModuleDir, " is not a directory"])})
