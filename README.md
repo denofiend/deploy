@@ -195,7 +195,7 @@ hot upgrade deploy module in deploy1 erlang node:
 
 	cd deploy1
 	bin/deploy console
-	deploy:hot_upgrade(deploy, deploy).
+	deploy:hot_upgrade(deploy, "/home/zhaoxu-b/deploy/rel/deploy01/lib/deploy-1/ebin/deploy.beam").
 	
 go to deploy2, check
 
