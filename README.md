@@ -66,8 +66,6 @@ configure app.config of deploy1, deploy2, deploy3(etc/app.config)
                             {password, "password~"}
                         ]}
                     ],
-                        %% beam directory of app.
-                        "/home/zhaoxu-b/",
                         "/data/deploy/bin/deploy restart",
                         'test_deploy',
                         ['deploy01@127.0.0.1', 'deploy02@127.0.0.1', 'deploy03@127.0.0.1']
