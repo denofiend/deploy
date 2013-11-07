@@ -56,6 +56,7 @@ configure app.config of deploy1, deploy2, deploy3(etc/app.config)
         },
         {deploy, [
             {apps, [
+            	%% deploy app.
                 {deploy,
                     %% ssh config of app servers.
                     {app_config, [
@@ -65,9 +66,14 @@ configure app.config of deploy1, deploy2, deploy3(etc/app.config)
                             {user, "your name"},
                             {password, "password~"}
                         ]}
-                    ],
+                    ], 
+                    	%% restart server command.
                         "/data/deploy/bin/deploy restart",
+                        
+                        %% cookie of Erlang cluster.
                         'test_deploy',
+                        
+                        %% name of Erlang cluster.
                         ['deploy01@127.0.0.1', 'deploy02@127.0.0.1', 'deploy03@127.0.0.1']
                     }
                 }
