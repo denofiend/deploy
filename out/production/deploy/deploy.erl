@@ -223,45 +223,47 @@ scp_file(App, LocalFile, RemotePath) ->
 %% Returns: ok
 %% --------------------------------------------------------------------
 scp_files(App, NewFileList) ->
-    %%io:format("deploy file ~p servers, NewFileList:~p~n", [App, NewFileList]),
+    io:format("deploy file ~p servers, NewFileList:~p~n", [App, NewFileList]),
+    try
+        case get_config(App) of
+            {ok, {App, Config}} ->
+                #app_config{server_list = ServerConfigList} = Config,
+                %% sync file to server
+                lists:foreach(
+                    fun(ServerConfig) ->
+                        case ServerConfig of
+                            {Name, _} ->
+                                {ok, CH} = ct_ssh:connect(Name, sftp),
+                                lists:foreach(
+                                    fun({LocalFile, RemotePath}) ->
 
-    case get_config(App) of
-        {ok, {App, Config}} ->
-            #app_config{server_list = ServerConfigList} = Config,
-            %% sync file to server
-            lists:foldl(
-                fun(ServerConfig, {OkCount, ErrorList}) ->
-                    case ServerConfig of
-                        {Name, _} ->
-                            case ct_ssh:connect(Name, sftp) of
-                                {ok, CH} ->
-                                    {OutOkCount, OutErrorList} = lists:foldl(
-                                        fun({LocalFile, RemotePath}, {InOkCount, InErrorList}) ->
-                                            case file:read_file(LocalFile) of
-                                                {ok, FileData} ->
-                                                    RemoteFile = filename:join([RemotePath, filename:basename(LocalFile)]),
-                                                    case ct_ssh:write_file(CH, RemoteFile, FileData) of
-                                                        {error, Reason} ->
-                                                            {InOkCount, [Reason | InErrorList]};
-                                                        _ ->
-                                                            {InOkCount + 1, InErrorList}
-                                                    end;
+                                        case file:read_file(LocalFile) of
+                                            {ok, FileData} ->
+                                                RemoteFile = filename:join([RemotePath, filename:basename(LocalFile)]),
+                                                case ct_ssh:write_file(CH, RemoteFile, FileData) of
+                                                    {error, Reason} ->
+                                                        throw({error, Reason});
+                                                    Any ->
+                                                        {ok, Any}
+                                                end;
 
-                                                _ ->
-                                                    {InOkCount, ["file is not exists." | InErrorList]}
-                                            end
-                                        end, {OkCount, ErrorList}, NewFileList),
-                                    ct_ssh:disconnect(CH),
-                                    {OutOkCount, OutErrorList};
-                                Any ->
-                                    {OkCount, [Any | ErrorList]}
-                            end;
-                        _ ->
-                            {OkCount, ["ssh config error" | ErrorList]}
-                    end
-                end, {0, []}, ServerConfigList);
-        Error ->
-            {0, Error}
+                                            _ ->
+                                                throw({error, "file is not exists."})
+                                        end
+                                    end, NewFileList),
+
+                                ct_ssh:disconnect(CH);
+                            _ ->
+                                throw({error, "ssh config error"})
+                        end
+                    end, ServerConfigList),
+                ok;
+            Error ->
+                {error, Error}
+        end
+    catch
+        Any ->
+            {error, Any}
     end.
 
 %% --------------------------------------------------------------------
