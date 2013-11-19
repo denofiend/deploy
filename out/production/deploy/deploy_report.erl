@@ -24,7 +24,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {total, ok, error}).
+-record(state, {server, total, ok, error}).
 
 %%%===================================================================
 %%% API
@@ -73,18 +73,19 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({Sign, InTotal}, _From, State) ->
+handle_call({Sign, Data}, _From, State) ->
     #state{total = Total, ok = Ok, error = Error} = State,
     NewState = case Sign of
-                   ok ->
-                       {OkCount, ErrorList} = InTotal,
-                       #state{total = Total, ok = Ok + OkCount, error = ErrorList ++ Error};
+                   report ->
+                       {ServerName, OkCount, ErrorList} = Data,
+                       #state{server = ServerName, total = Total, ok = Ok + OkCount, error = ErrorList ++ Error};
                    reset ->
-                       #state{total = InTotal, ok = 0, error = []}
+                       {ServerName, ResetTotal} = Data,
+                       #state{server = ServerName, total = ResetTotal, ok = 0, error = []}
                end,
     Reply = ok,
-    #state{ok = NewOk, error = NewError} = NewState,
-    io:format("Total Files:(~p), ok:(~p), error:(~p).~n", [Total, NewOk, NewError]),
+    #state{server = NewServerName, total = NewTotal, ok = NewOk, error = NewError} = NewState,
+    io:format("server:~p, total Files:(~p), ok:(~p), error:(~p).~n", [NewServerName, NewTotal, NewOk, NewError]),
     {reply, Reply, NewState}.
 
 %%--------------------------------------------------------------------

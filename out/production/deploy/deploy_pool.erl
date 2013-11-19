@@ -103,11 +103,11 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({scp_file, App, NewFileList}, State) ->
+handle_cast({scp_file, ServerName, NewFileList}, State) ->
     %%io:format("hash_cast App:~p, NewFileList:~p~n", [App, NewFileList]),
 
-    {OkCount, ErrorList} = deploy:scp_files(App, NewFileList),
-    gen_server:call(deploy_report, {ok, {OkCount, ErrorList}}),
+    {OkCount, ErrorList} = deploy:scp_files(ServerName, NewFileList),
+    gen_server:call(deploy_report, {ok, {ServerName, OkCount, ErrorList}}),
     {noreply, State}.
 
 
@@ -154,7 +154,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-scp_files(App, FileList) ->
+scp_files(ServerName, FileList) ->
     ServerList = ets:match_object(task_pool, '$1'),
     Size = erlang:length(ServerList),
     if
@@ -162,9 +162,9 @@ scp_files(App, FileList) ->
             {error, server_pool_is_empty};
         true ->
             RSize = erlang:length(FileList),
-            gen_server:call(deploy_report, {reset, RSize}),
+            gen_server:call(deploy_report, {reset, {ServerName, RSize}}),
             SizePerServer = compute_msg_size_per_server(Size, RSize),
-            Result = lets_go(App, ServerList, Size, FileList, 1, SizePerServer, RSize),
+            Result = lets_go(ServerName, ServerList, Size, FileList, 1, SizePerServer, RSize),
             Result
     end.
 
@@ -178,7 +178,7 @@ compute_msg_size_per_server(ServerPoolSize, Receiver_Size) ->
             SizePerServer + 1
     end.
 
-lets_go(App, ServerList, ServerLen, FileList, NServer, SizePerServer, RSize) ->
+lets_go(ServerName, ServerList, ServerLen, FileList, NServer, SizePerServer, RSize) ->
     Start = (NServer - 1) * SizePerServer + 1,
     if
         (Start > RSize) ->
@@ -186,11 +186,11 @@ lets_go(App, ServerList, ServerLen, FileList, NServer, SizePerServer, RSize) ->
         true ->
             NewFileList = lists:sublist(FileList, Start, SizePerServer),
             %%io:format("scp local files:~p to remote files by ~p group.~n", [NewFileList, NServer]),
-            ok = gen_server:cast(element(2, lists:nth(NServer, ServerList)), {scp_file, App, NewFileList}),
+            ok = gen_server:cast(element(2, lists:nth(NServer, ServerList)), {scp_file, ServerName, NewFileList}),
             case NServer of
                 ServerLen ->
                     ok;
                 _ ->
-                    lets_go(App, ServerList, ServerLen, FileList, NServer + 1, SizePerServer, RSize)
+                    lets_go(ServerName, ServerList, ServerLen, FileList, NServer + 1, SizePerServer, RSize)
             end
     end.
