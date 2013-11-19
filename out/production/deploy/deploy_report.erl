@@ -77,15 +77,14 @@ handle_call({Sign, InTotal}, _From, State) ->
     #state{total = Total, ok = Ok, error = Error} = State,
     NewState = case Sign of
                    ok ->
-                       #state{total = Total, ok = Ok + 1, error = Error};
+                       {OkCount, ErrorList} = InTotal,
+                       #state{total = Total, ok = Ok + OkCount, error = ErrorList ++ Error};
                    reset ->
-                       #state{total = InTotal, ok = 0, error = []};
-                   Any ->
-                       #state{total = Total, ok = Ok, error = [Any | Error]}
+                       #state{total = InTotal, ok = 0, error = []}
                end,
     Reply = ok,
     #state{ok = NewOk, error = NewError} = NewState,
-    io:format("Total File:(~p), ok:(~p), error:(~p).~n", [Total, NewOk, NewError]),
+    io:format("Total Files:(~p), ok:(~p), error:(~p).~n", [Total, NewOk, NewError]),
     {reply, Reply, NewState}.
 
 %%--------------------------------------------------------------------

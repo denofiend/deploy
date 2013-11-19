@@ -104,35 +104,55 @@ mkdir_basename(AppDir, CH, Dir) ->
     end.
 
 %% --------------------------------------------------------------------
-%% Function: get_files/5
-%% Description: get all need scp files in directory.
+%% Function: get_files_tail/3
+%% Description: get all need scp files in directory. (ls -lR| grep "^-" | wc -l)
 %% Returns: ok
 %% --------------------------------------------------------------------
-get_files(CH, LocalDir, AppDir, [], ResultFiles) ->
-    mkdir_basename(AppDir, CH, LocalDir),
+get_files_tail(_CH, [], ResultFiles) ->
     ResultFiles;
 
-get_files(CH, LocalDir, RemoteDir, [File | T], ResultFiles) ->
-    %%io:format("get_files: LocalDir:~p, CH:~p, RemoteDir:~p, File:~p, T:~p~n", [LocalDir, CH, RemoteDir, File, T]),
-    FullName = filename:join([LocalDir, File]),
-    NewAppDir = filename:join([RemoteDir, filename:basename(LocalDir)]),
+get_files_tail(CH, [{LocalDirs, RemoteDir} | T], ResultFiles) ->
+    %%io:format("get_files: LocalDirs:~p, RemoteDir:~p CH:~p, ResultFiles:~p~n", [LocalDirs, RemoteDir, CH, ResultFiles]),
 
-    %% mkdir in Remote server
-    mkdir_basename(RemoteDir, CH, LocalDir),
+    %% get sub directory(contain files and directory) list for each local directory,
+    {SubDirs, TmpResultFiles} = lists:foldl(
+        fun(File, {InSubDirs, InResultFiles}) ->
 
-    TmpResultFiles = case filelib:is_dir(FullName) of
-                         false ->
-                             [{FullName, NewAppDir} | ResultFiles];
-                         true ->
-                             io:format("~p is directory~n", [FullName]),
-                             case file:list_dir(FullName) of
-                                 {ok, SubFiles} ->
-                                     get_files(CH, FullName, NewAppDir, SubFiles, ResultFiles);
-                                 Any ->
-                                     throw(Any)
-                             end
-                     end,
-    get_files(CH, LocalDir, RemoteDir, T, TmpResultFiles).
+            case filelib:is_dir(File) of
+                %% 1. if File is file
+                false ->
+                    {InSubDirs, [{File, RemoteDir} | InResultFiles]};
+                %% 2. if FIle is directory, generate sub directory tuple({TmpLocalSubDirs, NewAppDir}).
+                true ->
+                    %% 2.1 make remote directory.
+                    mkdir_basename(RemoteDir, CH, File),
+
+                    %% 2.2 generate sub directory tuple.
+                    case file:list_dir(File) of
+                        {ok, SubFiles} ->
+
+                            %% 2.2.1 get new remote directory.
+                            NewRemoteDir = filename:join([RemoteDir, filename:basename(File)]),
+
+                            %% 2.2.2 get sub directory.
+                            TmpLocalSubDirs = lists:foldl(
+                                fun(SubFile, InnLocalSubDirs) ->
+                                    [filename:join([File, SubFile]) | InnLocalSubDirs]
+                                end, [], SubFiles),
+
+                            %% make sub tuple
+                            {[{TmpLocalSubDirs, NewRemoteDir} | InSubDirs], InResultFiles};
+                        Any ->
+                            throw(Any)
+                    end
+            end
+
+        end, {[], ResultFiles}, LocalDirs),
+
+    %%io:format("SubDirs:~p, TmpResultFiles:~p~n", [SubDirs, TmpResultFiles]),
+    get_files_tail(CH, T ++ SubDirs, TmpResultFiles).
+
+
 
 %% --------------------------------------------------------------------
 %% Function:scp_dir/3
@@ -141,19 +161,17 @@ get_files(CH, LocalDir, RemoteDir, [File | T], ResultFiles) ->
 %% --------------------------------------------------------------------
 scp_dir(App, LocalDir, RemoteDir) ->
     %%io:format("deploy dir ~p servers, LocalDir:~p, RemoteDir:~p~n", [App, LocalDir, RemoteDir]),
-
     try
         case get_config(App) of
             {ok, {App, Config}} ->
                 #app_config{server_list = ServerList} = Config,
-                {ok, FileNames} = file:list_dir(LocalDir),
 
                 lists:foreach(
                     fun(ServerConfig) ->
                         case ServerConfig of
                             {Name, _} ->
                                 {ok, CH} = ct_ssh:connect(Name, sftp),
-                                Files = get_files(CH, LocalDir, RemoteDir, FileNames, []),
+                                Files = get_files_tail(CH, [{[LocalDir], RemoteDir}], []),
                                 ct_ssh:disconnect(CH),
 
                                 deploy_pool:scp_files(App, Files);

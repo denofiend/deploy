@@ -104,35 +104,45 @@ mkdir_basename(AppDir, CH, Dir) ->
     end.
 
 %% --------------------------------------------------------------------
-%% Function: get_files/5
+%% Function: get_files/3
 %% Description: get all need scp files in directory.
 %% Returns: ok
 %% --------------------------------------------------------------------
-get_files(CH, LocalDir, AppDir, [], ResultFiles) ->
-    mkdir_basename(AppDir, CH, LocalDir),
+get_files(_CH, [], ResultFiles) ->
     ResultFiles;
 
-get_files(CH, LocalDir, RemoteDir, [File | T], ResultFiles) ->
-    %%io:format("get_files: LocalDir:~p, CH:~p, RemoteDir:~p, File:~p, T:~p~n", [LocalDir, CH, RemoteDir, File, T]),
-    FullName = filename:join([LocalDir, File]),
-    NewAppDir = filename:join([RemoteDir, filename:basename(LocalDir)]),
+get_files(CH, [{LocalDirs, RemoteDir} | T], ResultFiles) ->
+    io:format("get_files: LocalDirs:~p, RemoteDir:~p CH:~p, ResultFiles:~p~n", [LocalDirs, RemoteDir, CH, ResultFiles]),
 
-    %% mkdir in Remote server
-    mkdir_basename(RemoteDir, CH, LocalDir),
+    {SubDirs, TmpResultFiles} = lists:foldl(
+        fun(File, {InSubDirs, InResultFiles}) ->
 
-    TmpResultFiles = case filelib:is_dir(FullName) of
-                         false ->
-                             [{FullName, NewAppDir} | ResultFiles];
-                         true ->
-                             io:format("~p is directory~n", [FullName]),
-                             case file:list_dir(FullName) of
-                                 {ok, SubFiles} ->
-                                     get_files(CH, FullName, NewAppDir, SubFiles, ResultFiles);
-                                 Any ->
-                                     throw(Any)
-                             end
-                     end,
-    get_files(CH, LocalDir, RemoteDir, T, TmpResultFiles).
+            case filelib:is_dir(File) of
+                false ->
+                    {InSubDirs, [{File, RemoteDir} | InResultFiles]};
+                true ->
+                    mkdir_basename(RemoteDir, CH, File),
+
+                    case file:list_dir(File) of
+                        {ok, SubFiles} ->
+                            NewAppDir = filename:join([RemoteDir, filename:basename(File)]),
+
+                            TmpSubDirs = lists:foldl(
+                                fun(SubFile, InnSubDirs) ->
+                                    [{filename:join([File, SubFile]), NewAppDir} | InnSubDirs]
+                                end, InSubDirs, SubFiles),
+
+                            {TmpSubDirs, InResultFiles};
+                        Any ->
+                            throw(Any)
+                    end
+            end
+
+        end, {[], ResultFiles}, LocalDirs),
+
+    get_files(CH, T ++ SubDirs, TmpResultFiles).
+
+
 
 %% --------------------------------------------------------------------
 %% Function:scp_dir/3
@@ -140,20 +150,19 @@ get_files(CH, LocalDir, RemoteDir, [File | T], ResultFiles) ->
 %% Returns: ok
 %% --------------------------------------------------------------------
 scp_dir(App, LocalDir, RemoteDir) ->
-    %%io:format("deploy dir ~p servers, LocalDir:~p, RemoteDir:~p~n", [App, LocalDir, RemoteDir]),
+%%io:format("deploy dir ~p servers, LocalDir:~p, RemoteDir:~p~n", [App, LocalDir, RemoteDir]),
 
     try
         case get_config(App) of
             {ok, {App, Config}} ->
                 #app_config{server_list = ServerList} = Config,
-                {ok, FileNames} = file:list_dir(LocalDir),
 
                 lists:foreach(
                     fun(ServerConfig) ->
                         case ServerConfig of
                             {Name, _} ->
                                 {ok, CH} = ct_ssh:connect(Name, sftp),
-                                Files = get_files(CH, LocalDir, RemoteDir, FileNames, []),
+                                Files = get_files(CH, [{LocalDir, RemoteDir}], []),
                                 ct_ssh:disconnect(CH),
 
                                 deploy_pool:scp_files(App, Files);
@@ -223,47 +232,45 @@ scp_file(App, LocalFile, RemotePath) ->
 %% Returns: ok
 %% --------------------------------------------------------------------
 scp_files(App, NewFileList) ->
-    io:format("deploy file ~p servers, NewFileList:~p~n", [App, NewFileList]),
-    try
-        case get_config(App) of
-            {ok, {App, Config}} ->
-                #app_config{server_list = ServerConfigList} = Config,
-                %% sync file to server
-                lists:foreach(
-                    fun(ServerConfig) ->
-                        case ServerConfig of
-                            {Name, _} ->
-                                {ok, CH} = ct_ssh:connect(Name, sftp),
-                                lists:foreach(
-                                    fun({LocalFile, RemotePath}) ->
+    %%io:format("deploy file ~p servers, NewFileList:~p~n", [App, NewFileList]),
 
-                                        case file:read_file(LocalFile) of
-                                            {ok, FileData} ->
-                                                RemoteFile = filename:join([RemotePath, filename:basename(LocalFile)]),
-                                                case ct_ssh:write_file(CH, RemoteFile, FileData) of
-                                                    {error, Reason} ->
-                                                        throw({error, Reason});
-                                                    Any ->
-                                                        {ok, Any}
-                                                end;
+    case get_config(App) of
+        {ok, {App, Config}} ->
+            #app_config{server_list = ServerConfigList} = Config,
+            %% sync file to server
+            lists:foldl(
+                fun(ServerConfig, {OkCount, ErrorList}) ->
+                    case ServerConfig of
+                        {Name, _} ->
+                            case ct_ssh:connect(Name, sftp) of
+                                {ok, CH} ->
+                                    {OutOkCount, OutErrorList} = lists:foldl(
+                                        fun({LocalFile, RemotePath}, {InOkCount, InErrorList}) ->
+                                            case file:read_file(LocalFile) of
+                                                {ok, FileData} ->
+                                                    RemoteFile = filename:join([RemotePath, filename:basename(LocalFile)]),
+                                                    case ct_ssh:write_file(CH, RemoteFile, FileData) of
+                                                        {error, Reason} ->
+                                                            {InOkCount, [Reason | InErrorList]};
+                                                        _ ->
+                                                            {InOkCount + 1, InErrorList}
+                                                    end;
 
-                                            _ ->
-                                                throw({error, "file is not exists."})
-                                        end
-                                    end, NewFileList),
-
-                                ct_ssh:disconnect(CH);
-                            _ ->
-                                throw({error, "ssh config error"})
-                        end
-                    end, ServerConfigList),
-                ok;
-            Error ->
-                {error, Error}
-        end
-    catch
-        Any ->
-            {error, Any}
+                                                _ ->
+                                                    {InOkCount, ["file is not exists." | InErrorList]}
+                                            end
+                                        end, {OkCount, ErrorList}, NewFileList),
+                                    ct_ssh:disconnect(CH),
+                                    {OutOkCount, OutErrorList};
+                                Any ->
+                                    {OkCount, [Any | ErrorList]}
+                            end;
+                        _ ->
+                            {OkCount, ["ssh config error" | ErrorList]}
+                    end
+                end, {0, []}, ServerConfigList);
+        Error ->
+            {0, Error}
     end.
 
 %% --------------------------------------------------------------------

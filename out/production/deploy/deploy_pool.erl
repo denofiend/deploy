@@ -106,12 +106,8 @@ handle_call(_Request, _From, State) ->
 handle_cast({scp_file, App, NewFileList}, State) ->
     %%io:format("hash_cast App:~p, NewFileList:~p~n", [App, NewFileList]),
 
-    case deploy:scp_files(App, NewFileList) of
-        ok ->
-            gen_server:call(deploy_report, {ok, undfined});
-        Any ->
-            gen_server:call(deploy_report, {Any, undfined})
-    end,
+    {OkCount, ErrorList} = deploy:scp_files(App, NewFileList),
+    gen_server:call(deploy_report, {ok, {OkCount, ErrorList}}),
     {noreply, State}.
 
 

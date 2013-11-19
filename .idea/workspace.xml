@@ -2,17 +2,15 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/deploy_pool.erl" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/deploy_report.erl" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/deploy.erl" afterPath="$PROJECT_DIR$/src/deploy.erl" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/deploy_sup.erl" afterPath="$PROJECT_DIR$/src/deploy_sup.erl" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/deploy_report.erl" afterPath="$PROJECT_DIR$/src/deploy_report.erl" />
     </list>
     <ignored path="deploy.iws" />
     <ignored path=".idea/workspace.xml" />
     <file path="/hot_deploy.erl" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1383122197035" ignored="false" />
     <file path="/a.erl" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1383123552548" ignored="false" />
     <file path="/rebar.config" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1383123788338" ignored="false" />
-    <file path="/deploy.erl" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1384830005361" ignored="false" />
+    <file path="/deploy.erl" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1384849570872" ignored="false" />
     <file path="/deploy.app" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1383188533470" ignored="false" />
     <file path="/retool.config" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1383204529834" ignored="false" />
     <file path="E:/workspace/im_360/relation/Makefile" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1383204197776" ignored="false" />
@@ -23,7 +21,7 @@
     <file path="/Dummy.txt" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1384826629354" ignored="false" />
     <file path="/*.regexp" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1383646146789" ignored="false" />
     <file path="/reltool.config" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1383300782403" ignored="false" />
-    <file path="E:/workspace/im_360/base_lib/connpool/src/connpool_conn_agent.erl" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1383291657233" ignored="false" />
+    <file path="E:/workspace/im_360/base_lib/connpool/src/connpool_conn_agent.erl" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1384832272277" ignored="false" />
     <file path="/app.config.test" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1383635756638" ignored="false" />
     <file path="/deploy_sup.erl" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1384742952598" ignored="false" />
     <file path="/deploy.app.src" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1383561268171" ignored="false" />
@@ -53,7 +51,7 @@
     <file path="E:/workspace/im_360/relation/apps/relation/src/test/mysql_stress_test_sup.erl" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1384312465912" ignored="false" />
     <file path="E:/workspace/im_360/relation/apps/relation/src/db/mysqlclient.erl" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1384319904977" ignored="false" />
     <file path="/deploy_pool.erl" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1384828386262" ignored="false" />
-    <file path="/deploy_report.erl" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1384829039322" ignored="false" />
+    <file path="/deploy_report.erl" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1384848984950" ignored="false" />
     <file path="E:/workspace/im_360/relation/apps/relation/src/kv/md5_kv_task.erl" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1384743261235" ignored="false" />
     <file path="E:/workspace/im_360/relation/apps/relation/src/command/receiver_authority_sender_user.erl" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1384765101494" ignored="false" />
     <file path="/receiver_authority_sender_user.erl" changelist="bb8c7b68-ac39-4e72-af1a-1b3e43ee6185" time="1384764878135" ignored="false" />
@@ -127,7 +125,7 @@
       <file leaf-file-name="deploy.erl" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/deploy.erl">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="127" column="53" selection-start="4145" selection-end="4145" vertical-scroll-proportion="0.6580427">
+            <state line="140" column="51" selection-start="4835" selection-end="4836" vertical-scroll-proportion="0.807649">
               <folding />
             </state>
           </provider>
@@ -145,7 +143,7 @@
       <file leaf-file-name="deploy_pool.erl" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/deploy_pool.erl">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="109" column="61" selection-start="3264" selection-end="3264" vertical-scroll-proportion="0.0">
+            <state line="156" column="0" selection-start="4781" selection-end="4781" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -163,7 +161,7 @@
       <file leaf-file-name="deploy_report.erl" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/deploy_report.erl">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="86" column="33" selection-start="2761" selection-end="2763" vertical-scroll-proportion="0.0">
+            <state line="88" column="76" selection-start="2864" selection-end="2864" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -246,8 +244,8 @@
         <option value="$PROJECT_DIR$/rel/files/app.config" />
         <option value="C:/Program Files/erl5.9.3.1/lib/common_test-1.6.3/src/ct_ssh.erl" />
         <option value="$PROJECT_DIR$/src/deploy_pool.erl" />
-        <option value="$PROJECT_DIR$/src/deploy_report.erl" />
         <option value="$PROJECT_DIR$/src/deploy_sup.erl" />
+        <option value="$PROJECT_DIR$/src/deploy_report.erl" />
         <option value="$PROJECT_DIR$/src/deploy.erl" />
       </list>
     </option>
@@ -725,13 +723,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/deploy_report.erl">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="86" column="33" selection-start="2761" selection-end="2763" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/deploy_sup.erl">
       <provider selected="true" editor-type-id="text-editor">
         <state line="56" column="29" selection-start="1771" selection-end="1771" vertical-scroll-proportion="0.0">
@@ -741,14 +732,21 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/deploy_pool.erl">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="109" column="61" selection-start="3264" selection-end="3264" vertical-scroll-proportion="0.0">
+        <state line="156" column="0" selection-start="4781" selection-end="4781" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/deploy_report.erl">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="88" column="76" selection-start="2864" selection-end="2864" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/deploy.erl">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="127" column="53" selection-start="4145" selection-end="4145" vertical-scroll-proportion="0.6580427">
+        <state line="140" column="51" selection-start="4835" selection-end="4836" vertical-scroll-proportion="0.807649">
           <folding />
         </state>
       </provider>

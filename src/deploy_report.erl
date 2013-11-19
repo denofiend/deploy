@@ -83,8 +83,8 @@ handle_call({Sign, InTotal}, _From, State) ->
                        #state{total = InTotal, ok = 0, error = []}
                end,
     Reply = ok,
-    #state{ok = NewOk, error = NewError} = NewState,
-    io:format("Total Files:(~p), ok:(~p), error:(~p).~n", [Total, NewOk, NewError]),
+    #state{total = NewTotal, ok = NewOk, error = NewError} = NewState,
+    io:format("Total Files:(~p), ok:(~p), error:(~p).~n", [NewTotal, NewOk, NewError]),
     {reply, Reply, NewState}.
 
 %%--------------------------------------------------------------------
