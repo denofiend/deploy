@@ -12,8 +12,16 @@
 -behaviour(application).
 
 -export([
-    start/2, help/0,
-    stop/1, scp_file/3, restart_server/1, scp_dir/3, hot_upgrade_file/2, hot_upgrade_dir/2, scp_files/2
+    start/2,
+    help/0,
+    stop/1,
+    scp_file/3,
+    restart_server/1,
+    scp_dir/3,
+    hot_upgrade_file/2,
+    hot_upgrade_dir/2,
+    scp_files/2,
+    exec_command/2
 ]).
 
 
@@ -303,6 +311,44 @@ restart_server(App) ->
         Any ->
             Any
     end.
+
+%% --------------------------------------------------------------------
+%% Function:exec_command/1
+%% Description: execute Command on all servers of App.(in your config file)
+%% Returns: ok
+%% --------------------------------------------------------------------
+exec_command(App, Command) ->
+    io:format("execute command ~p on all servers of ~p~n", [Command, App]),
+    try
+        case get_config(App) of
+            {ok, {App, Config}} ->
+                #app_config{server_list = ServerList} = Config,
+                lists:foreach(
+                    fun(ServerConfig) ->
+                        case ServerConfig of
+                            {Name, _} ->
+                                {ok, CH1} = ct_ssh:connect(Name, ssh),
+                                case ct_ssh:exec(CH1, Command) of
+                                    {ok, _Data} ->
+                                        io:format("execute ~p success on ~p Server~n", [Command, Name]);
+                                    ErrorAny ->
+                                        throw(ErrorAny)
+                                end,
+                                ct_ssh:disconnect(CH1);
+                            _ ->
+                                throw({error, "ssh config error"})
+                        end
+                    end, ServerList),
+                ok;
+            Error ->
+                io:format("err:~p.~n", [Error]),
+                Error
+        end
+    catch
+        Any ->
+            Any
+    end.
+
 
 %% --------------------------------------------------------------------
 %% Function:reload_file/2
