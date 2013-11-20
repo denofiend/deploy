@@ -214,7 +214,7 @@ scp_files(ServerName, NewFileList) ->
                             RemoteFile = filename:join([RemotePath, filename:basename(LocalFile)]),
                             case ct_ssh:write_file(CH, RemoteFile, FileData) of
                                 {error, Reason} ->
-                                    {InOkCount, [Reason | InErrorList]};
+                                    {InOkCount, [lists:concat([LocalFile, " failed reason: ", Reason]) | InErrorList]};
                                 _ ->
                                     {InOkCount + 1, InErrorList}
                             end;
@@ -329,8 +329,8 @@ exec_command(App, Command) ->
                             {Name, _} ->
                                 {ok, CH1} = ct_ssh:connect(Name, ssh),
                                 case ct_ssh:exec(CH1, Command) of
-                                    {ok, _Data} ->
-                                        io:format("execute ~p success on ~p Server~n", [Command, Name]);
+                                    {ok, Data} ->
+                                        io:format("Command:~p, Server:~p, Response:~p~n", [Command, Name, Data]);
                                     ErrorAny ->
                                         throw(ErrorAny)
                                 end,

@@ -107,7 +107,7 @@ handle_cast({scp_file, ServerName, NewFileList}, State) ->
     %%io:format("hash_cast App:~p, NewFileList:~p~n", [App, NewFileList]),
 
     {OkCount, ErrorList} = deploy:scp_files(ServerName, NewFileList),
-    gen_server:call(deploy_report, {report, {ServerName, OkCount, ErrorList}}),
+    gen_server:call(deploy_report, {report, ServerName, {erlang:length(NewFileList), OkCount, ErrorList}}),
     {noreply, State}.
 
 
@@ -162,7 +162,7 @@ scp_files(ServerName, FileList) ->
             {error, server_pool_is_empty};
         true ->
             RSize = erlang:length(FileList),
-            gen_server:call(deploy_report, {reset, {ServerName, RSize}}),
+            gen_server:call(deploy_report, {reset, ServerName, {RSize}}),
             SizePerServer = compute_msg_size_per_server(Size, RSize),
             Result = lets_go(ServerName, ServerList, Size, FileList, 1, SizePerServer, RSize),
             Result

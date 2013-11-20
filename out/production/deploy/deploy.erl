@@ -12,8 +12,16 @@
 -behaviour(application).
 
 -export([
-    start/2, help/0,
-    stop/1, scp_file/3, restart_server/1, scp_dir/3, hot_upgrade_file/2, hot_upgrade_dir/2, scp_files/2
+    start/2,
+    help/0,
+    stop/1,
+    scp_file/3,
+    restart_server/1,
+    scp_dir/3,
+    hot_upgrade_file/2,
+    hot_upgrade_dir/2,
+    scp_files/2,
+    exec_command/2
 ]).
 
 
@@ -190,6 +198,38 @@ scp_dir(App, LocalDir, RemoteDir) ->
     end.
 
 %% --------------------------------------------------------------------
+%% Function:scp_files/2
+%% Description: deploy files to remote servers for app.
+%% Returns: ok
+%% --------------------------------------------------------------------
+scp_files(ServerName, NewFileList) ->
+    %%io:format("deploy files ~p servers, NewFileList:~p~n", [ServerName, NewFileList]),
+
+    case ct_ssh:connect(ServerName, sftp) of
+        {ok, CH} ->
+            {OutOkCount, OutErrorList} = lists:foldl(
+                fun({LocalFile, RemotePath}, {InOkCount, InErrorList}) ->
+                    case file:read_file(LocalFile) of
+                        {ok, FileData} ->
+                            RemoteFile = filename:join([RemotePath, filename:basename(LocalFile)]),
+                            case ct_ssh:write_file(CH, RemoteFile, FileData) of
+                                {error, Reason} ->
+                                    {InOkCount, [lists:concat([LocalFile, " failed reason: ", Reason]) | InErrorList]};
+                                _ ->
+                                    {InOkCount + 1, InErrorList}
+                            end;
+
+                        _ ->
+                            {InOkCount, [lists:concat([LocalFile, " is not exists."]) | InErrorList]}
+                    end
+                end, {0, []}, NewFileList),
+            ct_ssh:disconnect(CH),
+            {OutOkCount, OutErrorList};
+        Any ->
+            {0, Any}
+    end.
+
+%% --------------------------------------------------------------------
 %% Function:scp_file/3
 %% Description: deploy file to remote servers for app.
 %% Returns: ok
@@ -223,7 +263,7 @@ scp_file(App, LocalFile, RemotePath) ->
                                 end
                             end, ServerConfigList);
                     _ ->
-                        throw({error, "file is not exists."})
+                        throw({error, lists:concat([LocalFile, " is not exists."])})
                 end,
                 ok;
             Error ->
@@ -233,38 +273,6 @@ scp_file(App, LocalFile, RemotePath) ->
     catch
         Any ->
             Any
-    end.
-
-%% --------------------------------------------------------------------
-%% Function:scp_files/2
-%% Description: deploy files to remote servers for app.
-%% Returns: ok
-%% --------------------------------------------------------------------
-scp_files(ServerName, NewFileList) ->
-    %%io:format("deploy files ~p servers, NewFileList:~p~n", [ServerName, NewFileList]),
-
-    case ct_ssh:connect(ServerName, sftp) of
-        {ok, CH} ->
-            {OutOkCount, OutErrorList} = lists:foldl(
-                fun({LocalFile, RemotePath}, {InOkCount, InErrorList}) ->
-                    case file:read_file(LocalFile) of
-                        {ok, FileData} ->
-                            RemoteFile = filename:join([RemotePath, filename:basename(LocalFile)]),
-                            case ct_ssh:write_file(CH, RemoteFile, FileData) of
-                                {error, Reason} ->
-                                    {InOkCount, [Reason | InErrorList]};
-                                _ ->
-                                    {InOkCount + 1, InErrorList}
-                            end;
-
-                        _ ->
-                            {InOkCount, ["file is not exists." | InErrorList]}
-                    end
-                end, {0, []}, NewFileList),
-            ct_ssh:disconnect(CH),
-            {OutOkCount, OutErrorList};
-        Any ->
-            {0, Any}
     end.
 
 %% --------------------------------------------------------------------
@@ -303,6 +311,44 @@ restart_server(App) ->
         Any ->
             Any
     end.
+
+%% --------------------------------------------------------------------
+%% Function:exec_command/1
+%% Description: execute Command on all servers of App.(in your config file)
+%% Returns: ok
+%% --------------------------------------------------------------------
+exec_command(App, Command) ->
+    io:format("execute command ~p on all servers of ~p~n", [Command, App]),
+    try
+        case get_config(App) of
+            {ok, {App, Config}} ->
+                #app_config{server_list = ServerList} = Config,
+                lists:foreach(
+                    fun(ServerConfig) ->
+                        case ServerConfig of
+                            {Name, _} ->
+                                {ok, CH1} = ct_ssh:connect(Name, ssh),
+                                case ct_ssh:exec(CH1, Command) of
+                                    {ok, Data} ->
+                                        io:format("Command:~p, Server:~p, Response:~p~n", [Command, Name, Data]);
+                                    ErrorAny ->
+                                        throw(ErrorAny)
+                                end,
+                                ct_ssh:disconnect(CH1);
+                            _ ->
+                                throw({error, "ssh config error"})
+                        end
+                    end, ServerList),
+                ok;
+            Error ->
+                io:format("err:~p.~n", [Error]),
+                Error
+        end
+    catch
+        Any ->
+            Any
+    end.
+
 
 %% --------------------------------------------------------------------
 %% Function:reload_file/2

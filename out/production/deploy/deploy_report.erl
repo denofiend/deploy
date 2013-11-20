@@ -24,7 +24,8 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {server, total, ok, error}).
+-record(server, {name, total, ok, error}).
+-record(state, {servers}).
 
 %%%===================================================================
 %%% API
@@ -57,7 +58,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{total = 0, ok = 0, error = 0}}.
+    {ok, #state{servers = []}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -73,19 +74,27 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({Sign, Data}, _From, State) ->
-    #state{total = Total, ok = Ok, error = Error} = State,
+handle_call({Sign, ServerName, Data}, _From, State) ->
+    #state{servers = Servers} = State,
+
     NewState = case Sign of
                    report ->
-                       {ServerName, OkCount, ErrorList} = Data,
-                       #state{server = ServerName, total = Total, ok = Ok + OkCount, error = ErrorList ++ Error};
+                       {TotalCount, OkCount, ErrorList} = Data,
+                       case lists:keyfind(ServerName, 2, Servers) of
+                           #server{name = _Name, total = Total, ok = Ok, error = Error} ->
+                               NewServer = #server{name = ServerName, total = Total, ok = Ok + OkCount, error = Error ++ ErrorList},
+                               io:format("server:~p, total files:(~p), ok:(~p), error:(~p).~n", [ServerName, Total, Ok + OkCount, Error ++ ErrorList]),
+                               #state{servers = lists:keyreplace(ServerName, 2, Servers, NewServer)};
+                           _ ->
+                               io:format("server:~p, total files:(~p), ok:(~p), error:(~p).~n", [ServerName, TotalCount, OkCount, ErrorList]),
+                               #state{servers = lists:append(#server{name = ServerName, total = TotalCount, ok = OkCount, error = ErrorList})}
+                       end;
                    reset ->
-                       {ServerName, ResetTotal} = Data,
-                       #state{server = ServerName, total = ResetTotal, ok = 0, error = []}
+                       {ResetTotal} = Data,
+                       io:format("server:~p, total files:(~p), ok:(~p), error:(~p).~n", [ServerName, ResetTotal, 0, []]),
+                       #state{servers = lists:keystore(ServerName, 2, Servers, #server{name = ServerName, total = ResetTotal, ok = 0, error = []})}
                end,
     Reply = ok,
-    #state{server = NewServerName, total = NewTotal, ok = NewOk, error = NewError} = NewState,
-    io:format("server:~p, total Files:(~p), ok:(~p), error:(~p).~n", [NewServerName, NewTotal, NewOk, NewError]),
     {reply, Reply, NewState}.
 
 %%--------------------------------------------------------------------
